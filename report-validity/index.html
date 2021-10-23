@@ -185,7 +185,7 @@ console.log('willValidate');
 		}else{
 			this.internals.setValidity({});
 		}
-		this.internals.setFormValue(value);
+		this.setFormValue(value);
 	}
 	setFormValue(value){
 console.log('setFormValue',value);
@@ -197,9 +197,7 @@ console.log('checkValidity');
 	}
 	reportValidity() {
 console.log('reportValidity');
-		return this.internals.checkValidity();
-		// disable browser ui
-//		return this.internals.reportValidity();
+		return this.internals.reportValidity();
 	}
 	formAssociatedCallback(form){
 		this._initial = this.value;
