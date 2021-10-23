@@ -1,9 +1,18 @@
+<html><head>
+	<title>report valididty with custom element</title>
+</head><body>
+<pre>
 ---
 feature_name: reportValidity()
 chrome_version: 40
 feature_id: 5433505009893376
 ---
+Report Validity Sample
+===
+See https://googlechrome.github.io/samples/report-validity/index.html for a live demo.
 
+Learn more at https://www.chromestatus.com/feature/5433505009893376
+</pre>
 <h3>Background</h3>
 
 <p>
@@ -23,7 +32,10 @@ feature_id: 5433505009893376
 </p>
 
 
-{% capture initial_output_content %}
+<style>
+:invalid{ border: 1px dotted red; }
+:required{ background: #cf0; }
+</style>
 <form id="sample-form">
   <fieldset>
   <!-- NOTE my-element must be visible and focusable see comments in script below -->
@@ -40,6 +52,18 @@ feature_id: 5433505009893376
 </form>
 
 <script type=module>
+const form = document.querySelector('form');
+function _handle(event){
+	const { type, detail, target } = event;
+	console.log({type, detail, target, path: event.composedPath(), self: this });
+	if(/^(?:invalid|submit|formdata)$/.test(type)){
+		debugger;
+	}
+}
+'change, input, invalid, submit,reset, formdata, error, validate'.split(/[,\s]+/).forEach(event=>{
+	if(!event.trim()) return;
+	form.addEventListener(event, _handle);
+});
 /* a simple demo custom element that incorporates elementinternals to use validity APIs and reporting
 	when implemented as noted here it works in the same way standard HTML elements work
 
@@ -50,6 +74,8 @@ https://developer.mozilla.org/docs/Web/API/Constraint_validation
 https://developer.mozilla.org/docs/Web/API/ValidityState
 https://developer.mozilla.org/docs/Web/API/ElementInternals
  */
+
+import 'https://unpkg.com/element-internals-polyfill';
 class HTMLMyElement extends HTMLElement{
 	static get formAssociated() {
 		return true;
@@ -131,10 +157,22 @@ class HTMLMyElement extends HTMLElement{
 		}
 	}
 
+	get form(){
+		return this.internals.form;
+	}
+	get labels(){
+		return this.internals.labels;
+	}
+	get states(){
+		return this.internals.states;
+	}
+
 	get validity(){
+console.log('validity');
 		return this.internals.validity;
 	}
 	get willValidate(){
+console.log('willValidate');
 		return this.internals.willValidate;
 	}
 	get validationMessage(){
@@ -149,22 +187,32 @@ class HTMLMyElement extends HTMLElement{
 		}
 		this.internals.setFormValue(value);
 	}
+	setFormValue(value){
+console.log('setFormValue',value);
+		this.internals.setFormValue(value);
+	}
 	checkValidity() {
+console.log('checkValidity');
 		return this.internals.checkValidity();
 	}
 	reportValidity() {
-		return this.internals.reportValidity();
+console.log('reportValidity');
+		return this.internals.checkValidity();
+		// disable browser ui
+//		return this.internals.reportValidity();
 	}
 	formAssociatedCallback(form){
 		this._initial = this.value;
+console.log('formAssociatedCallback');
 		this.setValidity();
 	}
 	formResetCallback(){
 		this.value = this._initial;
+console.log('formResetCallback');
 		this.setValidity();
 	}
 	formDisabledCallback(disabled){
-		console.log(`element${ disabled ? '[disabled]' : ':not([disabled])'}`);
+		console.log(`formDisabledCallback element${ disabled ? '[disabled]' : ':not([disabled])'}`);
 	}
 
 	__attributeBoolean(name, value){
@@ -192,20 +240,22 @@ class HTMLMyElement extends HTMLElement{
 	set value(text){
 		this.textContent = text ?? '';
 		this.setValidity();
+		// fires as thing changes
+		this.dispatchEvent(new CustomEvent('input', {
+			bubbles: true,
+			cancelable: false,
+			composed: true,
+		}));
+		// fires at end of changes (when focus moves out)
+		this.dispatchEvent(new CustomEvent('change', {
+			bubbles: true,
+			cancelable: false,
+			// not composed
+			composed: false,
+		}));
 	}
-
 }
 
 customElements.define('my-element', HTMLMyElement)
 </script>
 
-{% endcapture %}
-{% include output_helper.html initial_output_content=initial_output_content %}
-
-{% capture js %}
-document.querySelector('#report-validity').addEventListener('click', function() {
-  var isValid = document.querySelector('#sample-form').reportValidity();
-  ChromeSamples.setStatus('The form ' + (isValid ? 'is' : 'is not') + ' valid.');
-});
-{% endcapture %}
-{% include js_snippet.html js=js %}
